@@ -1,12 +1,13 @@
 import os
 import subprocess
+import shlex
 
 current_file_path = os.path.abspath(__file__)
 
 
 def run_docker_container():
     user = os.getenv("USER")
-    container_name = f"gello_{user}"
+    container_name = f"gello_{shlex.quote(user)}"
     gello_path = os.path.abspath(os.path.join(current_file_path, "../../"))
     volume_mapping = f"{gello_path}:/gello"
 
