@@ -1,4 +1,4 @@
-import pickle
+import json
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -98,7 +98,7 @@ class ZMQRobotServer:
         while not self._stop_event.is_set():
             try:
                 message = self._socket.recv()
-                request = pickle.loads(message)
+                request = json.loads(message.decode('utf-8'))
 
                 # Call the appropriate method based on the request
                 method = request.get("method")
@@ -119,7 +119,7 @@ class ZMQRobotServer:
                         f"Invalid method: {method}, {args, result}"
                     )
 
-                self._socket.send(pickle.dumps(result))
+                self._socket.send(json.dumps(result).encode('utf-8'))
             except zmq.error.Again:
                 print("Timeout in ZMQLeaderServer serve")
                 # Timeout occurred, check if the stop event is set
