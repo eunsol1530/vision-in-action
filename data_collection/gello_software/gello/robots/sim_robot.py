@@ -1,4 +1,4 @@
-import pickle
+import json
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -98,7 +98,7 @@ class ZMQRobotServer:
         while not self._stop_event.is_set():
             try:
                 message = self._socket.recv()
-                request = pickle.loads(message)
+                request = json.loads(message.decode('utf-8'))
 
                 # Call the appropriate method based on the request
                 method = request.get("method")
@@ -107,11 +107,11 @@ class ZMQRobotServer:
                 if method == "num_dofs":
                     result = self._robot.num_dofs()
                 elif method == "get_joint_state":
-                    result = self._robot.get_joint_state()
+                    result = self._robot.get_joint_state().tolist()  # Convert numpy array to list
                 elif method == "command_joint_state":
-                    result = self._robot.command_joint_state(**args)
+                    result = self._robot.command_joint_state(np.array(args))
                 elif method == "get_observations":
-                    result = self._robot.get_observations()
+                    result = {k: v.tolist() for k, v in self._robot.get_observations().items()}  # Convert numpy arrays to lists
                 else:
                     result = {"error": "Invalid method"}
                     print(result)
@@ -119,7 +119,7 @@ class ZMQRobotServer:
                         f"Invalid method: {method}, {args, result}"
                     )
 
-                self._socket.send(pickle.dumps(result))
+                self._socket.send(json.dumps(result).encode('utf-8'))
             except zmq.error.Again:
                 print("Timeout in ZMQLeaderServer serve")
                 # Timeout occurred, check if the stop event is set

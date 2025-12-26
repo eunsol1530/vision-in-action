@@ -1,4 +1,4 @@
-import pickle
+import json
 import threading
 from typing import Any, Dict
 
@@ -34,7 +34,7 @@ class ZMQServerRobot:
             try:
                 # Wait for next request from client
                 message = self._socket.recv()
-                request = pickle.loads(message)
+                request = json.loads(message.decode('utf-8'))
 
                 # Call the appropriate method based on the request
                 method = request.get("method")
@@ -43,11 +43,11 @@ class ZMQServerRobot:
                 if method == "num_dofs":
                     result = self._robot.num_dofs()
                 elif method == "get_joint_state":
-                    result = self._robot.get_joint_state()
+                    result = self._robot.get_joint_state().tolist()  # Ensure JSON serializable
                 elif method == "command_joint_state":
                     result = self._robot.command_joint_state(**args)
                 elif method == "get_observations":
-                    result = self._robot.get_observations()
+                    result = {k: v.tolist() for k, v in self._robot.get_observations().items()}  # Ensure JSON serializable
                 else:
                     result = {"error": "Invalid method"}
                     print(result)
@@ -55,7 +55,7 @@ class ZMQServerRobot:
                         f"Invalid method: {method}, {args, result}"
                     )
 
-                self._socket.send(pickle.dumps(result))
+                self._socket.send(json.dumps(result).encode('utf-8'))
             except zmq.Again:
                 print(self._timout_message)
                 # Timeout occurred, check if the stop event is set
@@ -80,9 +80,9 @@ class ZMQClientRobot(Robot):
             int: The number of joints in the robot.
         """
         request = {"method": "num_dofs"}
-        send_message = pickle.dumps(request)
+        send_message = json.dumps(request).encode('utf-8')
         self._socket.send(send_message)
-        result = pickle.loads(self._socket.recv())
+        result = json.loads(self._socket.recv().decode('utf-8'))
         return result
 
     def get_joint_state(self) -> np.ndarray:
@@ -92,10 +92,10 @@ class ZMQClientRobot(Robot):
             T: The current state of the leader robot.
         """
         request = {"method": "get_joint_state"}
-        send_message = pickle.dumps(request)
+        send_message = json.dumps(request).encode('utf-8')
         self._socket.send(send_message)
-        result = pickle.loads(self._socket.recv())
-        return result
+        result = json.loads(self._socket.recv().decode('utf-8'))
+        return np.array(result)
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
         """Command the leader robot to the given state.
@@ -105,11 +105,11 @@ class ZMQClientRobot(Robot):
         """
         request = {
             "method": "command_joint_state",
-            "args": {"joint_state": joint_state},
+            "args": {"joint_state": joint_state.tolist()},
         }
-        send_message = pickle.dumps(request)
+        send_message = json.dumps(request).encode('utf-8')
         self._socket.send(send_message)
-        result = pickle.loads(self._socket.recv())
+        result = json.loads(self._socket.recv().decode('utf-8'))
         return result
 
     def get_observations(self) -> Dict[str, np.ndarray]:
@@ -119,7 +119,7 @@ class ZMQClientRobot(Robot):
             Dict[str, np.ndarray]: The current observations of the leader robot.
         """
         request = {"method": "get_observations"}
-        send_message = pickle.dumps(request)
+        send_message = json.dumps(request).encode('utf-8')
         self._socket.send(send_message)
-        result = pickle.loads(self._socket.recv())
-        return result
+        result = json.loads(self._socket.recv().decode('utf-8'))
+        return {k: np.array(v) for k, v in result.items()}
