@@ -80,7 +80,7 @@ def record_command(args):
 
     all_topics = " ".join(all_topics)
 
-    command = f"rosbag record {all_topics} -O {output_path}"
+    command = ["rosbag", "record"] + all_topics.split() + ["-O", output_path]
 
 
     return command, output_path
@@ -128,7 +128,7 @@ def record(args, prev_path=None, p=None):
     if cmd == 's':
         # old_time = time.time()
         command, fpath = record_command(args)
-        p_new = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+        p_new = subprocess.Popen(command, stdin=subprocess.PIPE, preexec_fn=os.setsid)
         #print(f"started process {p_new.pid}")
         read_it("started")
 

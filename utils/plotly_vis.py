@@ -123,7 +123,10 @@ class Visualizer:
         def index():
             return render_template_string('''<div>{{ div|safe }}</div>''', div=div)
         
-        self.app.run(debug=True, use_reloader=False)
+        # Set debug mode based on environment variable or default to False
+        import os
+        debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+        self.app.run(debug=debug_mode, use_reloader=False)
 
     def visualize_pointcloud_and_save(self, pointcloud, color:tuple=None, save_path=None):
         trace = self._generate_trace(pointcloud, color=color, size=6, opacity=1.0)
